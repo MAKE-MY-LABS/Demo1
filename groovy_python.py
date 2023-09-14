@@ -1,2 +1,1 @@
-import xml.etree.ElementTree as ET
-import access
+/*write a python code to print a prime number*/
