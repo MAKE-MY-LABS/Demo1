@@ -1,0 +1,54 @@
+CREATE TABLE ingest_db.cb_crdt (prsn_acct_id BIGINT, prsn_home_br_id INT, prsn_age SMALLINT, prsn_income DECIMAL(10,2), prsn_hm_ownership VARCHAR(20), prsn_emp_length SMALLINT, ln_intent VARCHAR(20), ln_grade CHAR(2), ln_amnt DECIMAL(10,2), ln_cury CHAR(3), ln_int_rate DECIMAL(4,2), ln_status SMALLINT,
+ln_percent_income DECIMAL(3,2), cb_prsn_deflt_on_file CHAR(1), cb_prsn_cred_hist_len SMALLINT, etl_transactn_date DATE,
+PRIMARY KEY (prsn_acct_id, prsn_home_br_id));
+-------------------------------------
+Create TABLE integral_db.CREDIT_RISK_ASSESSMENT (person_acct_id BIGINT, person_home_branch VARCHAR(20), loan_intent VARCHAR(20), loan_grade CHAR(2), loan_amnt DECIMAL(10,2), loan_cury CHAR(3), loan_int_rate DECIMAL(4,2), current_loan_status SMALLINT, person_default_on_file CHAR(1), Ideal_employment_history CHAR(3), Risk_flag  CHAR(3), desired_amount INT, etl_transactn_date DATE, PRIMARY KEY (person_acct_id));
+-------------------------------------
+Create TABLE integral_db.PERSON_IDNTFCATN (person_acct_id BIGINT, person_home_br_id INT, person_home_branch VARCHAR(20), person_age SMALLINT, person_income DECIMAL(10,2), prsn_cury CHAR(3), person_home_ownership VARCHAR(20), person_emp_length SMALLINT, person_credit_history_length SMALLINT, etl_transactn_date DATE, loan_amnt DECIMAL(10,2), loan_cury CHAR(3), PRIMARY KEY (person_acct_id, person_home_br_id));
+
+---------------------------------------
+create table etl_mdt_db.etl_flow_sql(etl_flow_id INT, etl_flow_sql LONGTEXT, etl_db_layr VARCHAR(20), etl_table VARCHAR(50), primary key (etl_flow_id));
+
+----------------------------------------------------
+Create TABLE Access_db.SHARED_CREDIT_RISK_ASSESSMENT
+(
+person_acct_id bigint,
+person_home_branch varchar(20),
+loan_intent   varchar(20),
+loan_grade    char(2),
+loan_amnt     decimal (10,2),
+loan_cury char(3),
+loan_int_rate decimal (4,2),
+current_loan_status   smallint,
+person_default_on_file char(1),
+Ideal_employment_history char(3),
+Risk_flag  char(3),
+desired_amount int,
+etl_transactn_date date,
+
+  PRIMARY KEY (person_acct_id)
+);
+-------------------------------------
+Create TABLE Access_db.SHARED_PERSON_IDNTFCATN
+(
+Person_acct_id bigint,
+Person_home_br_id int,
+Person_home_branch varchar(20),
+person_age smallint,
+person_income decimal (10,2),
+Prsn_cury char(3),
+person_home_ownership varchar(20),
+person_emp_length  smallint,
+Person_credit_history_length smallint,
+etl_transactn_date date,
+
+PRIMARY KEY (Person_acct_id, Person_home_br_id)
+);
+
+----------------------------------------------------------------------------------
+
+INSERT INTO integral_db.CREDIT_RISK_ASSESSMENT (person_acct_id,person_home_branch,loan_intent,loan_grade,loan_amnt,loan_cury,loan_int_rate,current_loan_status,person_default_on_file,Risk_flag,ideal_employment_history,desired_amount) Select prsn_acct_id AS person_acct_id, CASE WHEN prsn_home_br_id="01" THEN "Brussels" WHEN prsn_home_br_id="02" THEN "Antwerp" WHEN prsn_home_br_id="03" THEN "Ostend" Else "Bruges" END AS person_home_branch, ln_intent AS loan_intent, ln_grade AS loan_grade, ln_amnt AS loan_amnt, ln_cury AS loan_cury, ln_int_rate AS loan_int_rate, ln_status AS current_loan_status, cb_prsn_deflt_on_file AS person_default_on_file, CASE WHEN cb_prsn_deflt_on_file="N" AND ln_status=0 AND ln_percent_income<0.50 THEN "No" ELSE "Yes" END AS Risk_flag, CASE WHEN prsn_emp_length>5 THEN "Yes" ELSE "No" End AS ideal_employment_history, CASE WHEN cb_prsn_deflt_on_file="N" AND ln_status=0 AND ln_percent_income<0.50 AND cb_prsn_cred_hist_len>3 AND prsn_hm_ownership="OWN" THEN prsn_income*0.5 WHEN cb_prsn_deflt_on_file="N" AND ln_status=0 AND ln_percent_income<0.50 AND cb_prsn_cred_hist_len<3 AND prsn_hm_ownership="MORTGAGE" THEN prsn_income*0.35  WHEN cb_prsn_deflt_on_file="N" AND ln_status=0 AND ln_percent_income<0.50 AND cb_prsn_cred_hist_len<3 AND prsn_hm_ownership="RENT" THEN prsn_income*0.25 ELSE 0 END  AS desired_amount From (SELECT prsn_acct_id,prsn_home_br_id,prsn_age,prsn_income,prsn_hm_ownership,prsn_emp_length,ln_intent,ln_grade,ln_amnt,ln_cury,ln_int_rate,ln_status,ln_percent_income,cb_prsn_deflt_on_file,cb_prsn_cred_hist_len,etl_transactn_date from ingest_db.cb_crdt crdt)ingst;
+
+------------------------------------------------------------------------------------------------------------
+
+INSERT INTO integral_db.PERSON_IDNTFCATN (person_acct_id,person_home_br_id,person_home_branch,person_age,person_income,prsn_cury,loan_amnt,loan_cury,person_home_ownership,person_emp_length,person_credit_history_length) Select prsn_acct_id AS person_acct_id, prsn_home_br_id AS person_home_br_id, CASE WHEN prsn_home_br_id="01" THEN "Brussels" WHEN prsn_home_br_id="02" THEN "Antwerp" WHEN prsn_home_br_id="03" THEN "Ostend" Else "Bruges" END AS person_home_branch, prsn_age AS person_age, prsn_income AS person_income, ln_cury AS prsn_cury, ln_amnt AS loan_amnt, ln_cury AS loan_cury, prsn_hm_ownership AS person_home_ownership, prsn_emp_length AS person_emp_length, cb_prsn_cred_hist_len AS person_credit_history_length From (SELECT prsn_acct_id,prsn_home_br_id,prsn_age,prsn_income,prsn_hm_ownership,prsn_emp_length,ln_intent,ln_grade,ln_amnt,ln_cury,ln_int_rate,ln_status,ln_percent_income,cb_prsn_deflt_on_file,cb_prsn_cred_hist_len,etl_transactn_date from ingest_db.cb_crdt crdt)ingst;
